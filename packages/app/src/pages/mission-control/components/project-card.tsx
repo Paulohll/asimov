@@ -4,13 +4,7 @@ import { base64Encode } from "@opencode-ai/util/encode"
 import { getFilename } from "@opencode-ai/util/path"
 import type { Project, Session, SessionStatus, Todo, SnapshotFileDiff } from "@opencode-ai/sdk/v2/client"
 import { AgentRow } from "./agent-row"
-
-function urgency(status: SessionStatus | undefined): number {
-  if (!status) return 0
-  if (status.type === "retry") return 2
-  if (status.type === "busy") return 1
-  return 0
-}
+import { sortByUrgency } from "../utils"
 
 export function ProjectCard(props: {
   project: Project
@@ -22,9 +16,7 @@ export function ProjectCard(props: {
   const navigate = useNavigate()
   const name = createMemo(() => props.project.name || getFilename(props.project.worktree))
 
-  const sorted = createMemo(() =>
-    props.sessions.slice().sort((a, b) => urgency(props.statuses[b.id]) - urgency(props.statuses[a.id])),
-  )
+  const sorted = createMemo(() => sortByUrgency(props.sessions, (s) => props.statuses[s.id]))
 
   return (
     <div class="flex flex-col gap-3 p-4 rounded-xl border border-border-weak-base bg-surface-base min-w-0">

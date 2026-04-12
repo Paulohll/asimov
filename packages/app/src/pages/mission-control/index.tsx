@@ -1,17 +1,10 @@
 import { createMemo, For } from "solid-js"
 import { useGlobalSync } from "@/context/global-sync"
-import type { Project, Session, SessionStatus } from "@opencode-ai/sdk/v2/client"
+import type { Project } from "@opencode-ai/sdk/v2/client"
 import { StatsBar } from "./components/stats-bar"
 import { MetricsBar } from "./components/metrics-bar"
 import { ProjectCard } from "./components/project-card"
-
-function projectUrgency(sessions: Session[], statuses: Record<string, SessionStatus | undefined>): number {
-  return sessions.reduce((max, s) => {
-    const t = statuses[s.id]?.type
-    const u = t === "retry" ? 2 : t === "busy" ? 1 : 0
-    return Math.max(max, u)
-  }, 0)
-}
+import { urgency } from "./utils"
 
 export default function MissionControlPage() {
   const sync = useGlobalSync()
@@ -32,7 +25,11 @@ export default function MissionControlPage() {
   const sorted = createMemo(() =>
     data()
       .slice()
-      .sort((a, b) => projectUrgency(b.sessions, b.statuses) - projectUrgency(a.sessions, a.statuses)),
+      .sort((a, b) => {
+        const ua = Math.max(0, ...a.sessions.map((s) => urgency(a.statuses[s.id])))
+        const ub = Math.max(0, ...b.sessions.map((s) => urgency(b.statuses[s.id])))
+        return ub - ua
+      }),
   )
 
   return (
