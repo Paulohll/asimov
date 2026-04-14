@@ -2347,8 +2347,6 @@ export default function Layout(props: ParentProps) {
       onOpenSettings={openSettings}
       helpLabel={() => language.t("sidebar.help")}
       onOpenHelp={() => platform.openLink("https://opencode.ai/desktop-feedback")}
-      missionControlLabel={() => "Mission Control"}
-      onOpenMissionControl={() => navigateWithSidebarReset("/mission-control")}
       renderPanel={() =>
         mobile ? <SidebarPanel project={currentProject} mobile /> : <SidebarPanel project={currentProject} merged />
       }
