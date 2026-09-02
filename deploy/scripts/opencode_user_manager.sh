@@ -3,13 +3,18 @@ set -euo pipefail
 
 ASIMOV_DIR="/opt/asimov"
 USERS_FILE="${ASIMOV_DIR}/users.json"
+INVITATIONS_FILE="${ASIMOV_DIR}/invitations.json"
 COMPOSE_FILE="${ASIMOV_DIR}/docker-compose.yml"
 MASTER_REPO="/var/lib/docker/volumes/asimov_workspace/_data"
 GITHUB_REPO_URL="github.com/AffiliateAccess/affilliateSO.git"
 BASE_PORT=4001
 
 function show_help() {
-  echo "Uso: $0 {add|list|remove|reset-pass} <username> [password] [git_name] [git_email] [github_token]"
+  echo "Uso: $0 {invite|add|list|remove|reset-pass} [argumentos...]"
+  echo "  invite <username> [git_name] [git_email]          - Genera un Magic Link de un solo uso"
+  echo "  add <username> [pass] [git_name] [git_email] [tok] - Aprovisiona un usuario"
+  echo "  list                                               - Lista usuarios e invitaciones activas"
+  echo "  remove <username>                                  - Elimina contenedor y registro del usuario"
   exit 1
 }
 
@@ -33,6 +38,40 @@ with open('${USERS_FILE}') as f:
     users = json.load(f)
 sys.exit(0 if '$1' in users else 1)
 "
+}
+
+function create_invite() {
+  local USERNAME="$1"
+  local GIT_NAME="${2:-${USERNAME}}"
+  local GIT_EMAIL="${3:-${USERNAME}@euroaffiliati.com}"
+  local TOKEN="inv_${USERNAME}_$(openssl rand -hex 12)"
+
+  python3 -c "
+import json, os, time
+
+inv_file = '${INVITATIONS_FILE}'
+invs = json.load(open(inv_file)) if os.path.exists(inv_file) else {}
+
+invs['${TOKEN}'] = {
+    'username': '${USERNAME}',
+    'git_name': '${GIT_NAME}',
+    'git_email': '${GIT_EMAIL}',
+    'created_at': int(time.time()),
+    'consumed': False
+}
+
+with open(inv_file, 'w') as f:
+    json.dump(invs, f, indent=2)
+"
+
+  echo "============================================================"
+  echo "🔗 Magic Link de Invitación Generado:"
+  echo "👉 https://code.euroaffiliati.com/onboard?token=${TOKEN}"
+  echo "👤 Usuario: ${USERNAME}"
+  echo "📧 Git: ${GIT_NAME} <${GIT_EMAIL}>"
+  echo "🔒 Enlace de un solo uso (se invalida tras el registro)"
+  echo "============================================================"
+  echo "INVITE_URL:https://code.euroaffiliati.com/onboard?token=${TOKEN}"
 }
 
 function add_user() {
@@ -107,35 +146,14 @@ username, port, user_dir, compose_file = sys.argv[1:5]
 
 service_block = f"""
   opencode-{username}:
-    image: ${{DOCKER_IMAGE:-opencode-custom}}:${{DOCKER_TAG:-latest}}
+    <<: *opencode-user
     container_name: opencode-{username}
-    restart: unless-stopped
-    working_dir: /affiliateSO
     ports:
       - "127.0.0.1:{port}:4000"
-    environment:
-      OPENCODE_DISABLE_AUTOUPDATE: "true"
-      GEMINI_API_KEY: ${{GEMINI_API_KEY}}
-      GOOGLE_API_KEY: ${{GOOGLE_API_KEY}}
-      GOOGLE_GENERATIVE_AI_API_KEY: ${{GEMINI_API_KEY}}
     volumes:
       - {user_dir}:/affiliateSO
       - opencode_config_{username}:/root/.config/opencode
       - opencode_data_{username}:/root/.local/share/opencode
-    command:
-      - web
-      - --hostname
-      - "0.0.0.0"
-      - --port
-      - "4000"
-      - --cors
-      - "https://code.euroaffiliati.com"
-      - /affiliateSO
-    deploy:
-      resources:
-        limits:
-          memory: 1536M
-          cpus: "1.0"
 """
 volume_lines = f"  opencode_config_{username}:\n  opencode_data_{username}:\n"
 
@@ -217,12 +235,31 @@ for name, u in users.items():
     print(f\"{name}: puerto={u['port']} container={u['container_name']} github={u.get('github_connected', 'n/a')}\")
 "
   echo ""
+  echo "=== INVITACIONES PENDIENTES ==="
+  python3 -c "
+import json, os
+inv_file = '${INVITATIONS_FILE}'
+if os.path.exists(inv_file):
+    invs = json.load(open(inv_file))
+    pending = {k: v for k, v in invs.items() if not v.get('consumed')}
+    for t, inv in pending.items():
+        print(f\"Usuario: {inv['username']} -> https://code.euroaffiliati.com/onboard?token={t}\")
+    if not pending:
+        print('(ninguna)')
+else:
+    print('(ninguna)')
+"
+  echo ""
   echo "=== ESTADO DE CONTENEDORES ==="
   cd "${ASIMOV_DIR}"
   docker compose ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}" | grep opencode- || true
 }
 
 case "${1:-}" in
+  invite)
+    [ -z "${2:-}" ] && show_help
+    create_invite "$2" "${3:-}" "${4:-}"
+    ;;
   add)
     [ -z "${2:-}" ] && show_help
     add_user "$2" "${3:-}" "${4:-}" "${5:-}" "${6:-}"

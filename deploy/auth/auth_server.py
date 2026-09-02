@@ -12,6 +12,7 @@ import re
 
 PORT = 4005
 USERS_FILE = "/opt/asimov/users.json"
+INVITATIONS_FILE = "/opt/asimov/invitations.json"
 SECRET_FILE = "/opt/asimov/.session_secret"
 MANAGER_SCRIPT = "/opt/asimov/scripts/opencode_user_manager.sh"
 USERNAME_RE = re.compile(r"^[a-zA-Z0-9._-]{3,32}$")
@@ -99,11 +100,35 @@ LOGIN_TEMPLATE = PAGE_HEAD + """
     </div>
 
     <div class="mt-4 text-center text-xs text-slate-500">
-      <a href="/onboard" class="text-purple-400 hover:text-purple-300 underline">Primer ingreso: configurar mi workspace</a>
+      <span>¿Primera vez? Solicita tu Magic Link de invitación al administrador.</span>
     </div>
 
     <div class="mt-6 text-center text-xs text-slate-500">
       <span>Powered by Google Gemini 3.7 Flash</span> · <span>Seedlab Multi-agent</span>
+    </div>
+  </div>
+""" + PAGE_TAIL
+
+RESTRICTED_TEMPLATE = PAGE_HEAD + """
+  <div class="w-full max-w-md relative z-10 text-center">
+    <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-amber-950/60 border border-amber-500/30 shadow-lg shadow-amber-500/10 mb-4">
+      <svg class="w-7 h-7 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+      </svg>
+    </div>
+    <div class="bg-dark-card border border-dark-border rounded-2xl p-7 shadow-2xl backdrop-blur-xl">
+      <h1 class="text-xl font-bold text-white mb-2">Acceso por Invitación Únicamente</h1>
+      <p class="text-sm text-slate-400 mb-6">
+        Se requiere un <strong>Magic Link de invitación válido</strong> para registrarse y aprovisionar un workspace de OpenCode en este servidor.
+      </p>
+      <div class="space-y-3">
+        <a href="/login" class="inline-flex items-center justify-center w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-medium py-2.5 px-4 rounded-xl shadow-lg shadow-purple-600/25 transition duration-150 text-sm">
+          Ir a Iniciar Sesión
+        </a>
+      </div>
+    </div>
+    <div class="mt-6 text-xs text-slate-500">
+      <span>Contacta al Administrador de Infraestructura para obtener tu enlace.</span>
     </div>
   </div>
 """ + PAGE_TAIL
@@ -116,72 +141,73 @@ ONBOARD_TEMPLATE = PAGE_HEAD + """
           <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
         </svg>
       </div>
-      <h1 class="text-2xl font-bold text-white tracking-tight">Configura tu Workspace</h1>
-      <p class="text-sm text-slate-400 mt-1">Se aprovisiona tu instancia OpenCode aislada automáticamente</p>
+      <h1 class="text-2xl font-bold text-white tracking-tight">Activa tu Workspace OpenCode</h1>
+      <p class="text-sm text-slate-400 mt-1">Configuración personalizada de identidad, claves y repositorio</p>
     </div>
 
     <div class="bg-dark-card border border-dark-border rounded-2xl p-7 shadow-2xl backdrop-blur-xl">
       {{ERROR_BANNER}}
       <form method="POST" action="/onboard" class="space-y-4">
+        <input type="hidden" name="token" value="{{INVITE_TOKEN}}">
+
         <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Usuario (para iniciar sesión)</label>
-          <input type="text" name="username" required pattern="[a-zA-Z0-9._-]{3,32}"
-            class="w-full bg-dark-input border border-dark-border rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
-            placeholder="ej: paulo.horna">
+          <div class="flex justify-between items-center mb-1.5">
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400">Usuario Asignado</label>
+            <span class="text-xs text-purple-400 font-mono">🔒 Verificado por invitación</span>
+          </div>
+          <input type="text" name="username" value="{{USERNAME}}" readonly
+            class="w-full bg-dark-input/60 border border-dark-border/80 rounded-xl px-4 py-3 text-sm text-purple-200 font-mono cursor-not-allowed">
         </div>
+
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Contraseña</label>
-            <input type="password" name="password" required minlength="8"
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Tu Contraseña</label>
+            <input type="password" name="password" required minlength="8" autofocus
               class="w-full bg-dark-input border border-dark-border rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
               placeholder="mín. 8 caracteres">
           </div>
           <div>
-            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Confirmar</label>
+            <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Confirmar Contraseña</label>
             <input type="password" name="confirm_password" required minlength="8"
               class="w-full bg-dark-input border border-dark-border rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
-              placeholder="repite password">
+              placeholder="repite contraseña">
           </div>
         </div>
+
         <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Nombre completo (para commits de Git)</label>
-          <input type="text" name="git_name" required
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Nombre en Git (para tus commits)</label>
+          <input type="text" name="git_name" value="{{GIT_NAME}}" required
             class="w-full bg-dark-input border border-dark-border rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
             placeholder="ej: Paulo Horna">
         </div>
+
         <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Email de Git</label>
-          <input type="email" name="git_email" required
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Email en Git</label>
+          <input type="email" name="git_email" value="{{GIT_EMAIL}}" required
             class="w-full bg-dark-input border border-dark-border rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
-            placeholder="tu@email.com">
+            placeholder="tu@euroaffiliati.com">
         </div>
+
         <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Token de GitHub (opcional, recomendado)</label>
+          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">GitHub Personal Access Token (PAT)</label>
           <input type="password" name="github_token" autocomplete="off"
             class="w-full bg-dark-input border border-dark-border rounded-xl px-4 py-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
-            placeholder="ghp_... (Personal Access Token con permiso repo)">
-          <p class="text-xs text-slate-500 mt-1">Sin este token podrás trabajar localmente pero no podrás sincronizar (push/pull) con GitHub hasta configurarlo.</p>
+            placeholder="ghp_... o gho_... (con permisos de repo)">
+          <p class="text-xs text-slate-500 mt-1.5 leading-relaxed">
+            Permite a tu agente y a tu workspace sincronizar ramas, hacer <code>/sync</code> y empujar commits a <code>AffiliateAccess/affilliateSO</code>.
+          </p>
         </div>
 
         <button type="submit"
           class="w-full mt-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-medium py-3 px-4 rounded-xl shadow-lg shadow-purple-600/25 transition duration-200 flex items-center justify-center space-x-2">
-          <span>Crear mi Workspace</span>
+          <span>Aprovisionar y Entrar a mi Workspace</span>
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
         </button>
       </form>
     </div>
 
     <div class="mt-4 text-center text-xs text-slate-500">
-      <a href="/login" class="text-purple-400 hover:text-purple-300 underline">Ya tengo cuenta, ir a login</a>
-    </div>
-  </div>
-""" + PAGE_TAIL
-
-PROVISIONING_TEMPLATE = PAGE_HEAD + """
-  <div class="w-full max-w-lg relative z-10 text-center">
-    <div class="bg-dark-card border border-dark-border rounded-2xl p-8 shadow-2xl">
-      <h1 class="text-xl font-bold text-white mb-3">Aprovisionando tu workspace...</h1>
-      <p class="text-sm text-slate-400">Esto toma unos segundos. No cierres esta pestaña.</p>
+      <span>Al activar tu workspace, este enlace de invitación quedará consumido.</span>
     </div>
   </div>
 """ + PAGE_TAIL
@@ -192,6 +218,36 @@ def load_users() -> dict:
         return {}
     with open(USERS_FILE) as f:
         return json.load(f)
+
+
+def load_invitations() -> dict:
+    if not os.path.exists(INVITATIONS_FILE):
+        return {}
+    with open(INVITATIONS_FILE) as f:
+        return json.load(f)
+
+
+def save_invitations(invs: dict):
+    with open(INVITATIONS_FILE, "w") as f:
+        json.dump(invs, f, indent=2)
+
+
+def validate_invitation(token: str) -> dict:
+    if not token:
+        return None
+    invs = load_invitations()
+    inv = invs.get(token)
+    if inv and not inv.get("consumed", False):
+        return inv
+    return None
+
+
+def consume_invitation(token: str):
+    invs = load_invitations()
+    if token in invs:
+        invs[token]["consumed"] = True
+        invs[token]["consumed_at"] = int(time.time())
+        save_invitations(invs)
 
 
 def verify_password(username: str, password: str, users: dict) -> bool:
@@ -286,6 +342,13 @@ class AuthHandler(http.server.BaseHTTPRequestHandler):
             return
 
         if path == "/onboard":
+            invite_token = query.get("token", [None])[0]
+            invitation = validate_invitation(invite_token)
+
+            if not invitation:
+                self._send_html(RESTRICTED_TEMPLATE, status=403)
+                return
+
             error = query.get("error", [None])[0]
             error_banner = ""
             if error:
@@ -293,7 +356,14 @@ class AuthHandler(http.server.BaseHTTPRequestHandler):
                   <svg class="w-4 h-4 text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                   <span>{error}</span>
                 </div>"""
-            html = ONBOARD_TEMPLATE.replace("{{ERROR_BANNER}}", error_banner)
+
+            html = (
+                ONBOARD_TEMPLATE.replace("{{ERROR_BANNER}}", error_banner)
+                .replace("{{INVITE_TOKEN}}", urllib.parse.quote(invite_token))
+                .replace("{{USERNAME}}", invitation.get("username", ""))
+                .replace("{{GIT_NAME}}", invitation.get("git_name", ""))
+                .replace("{{GIT_EMAIL}}", invitation.get("git_email", ""))
+            )
             self._send_html(html)
             return
 
@@ -351,19 +421,31 @@ class AuthHandler(http.server.BaseHTTPRequestHandler):
             length = int(self.headers.get("Content-Length", 0))
             body = self.rfile.read(length).decode("utf-8")
             data = urllib.parse.parse_qs(body)
-            username = data.get("username", [""])[0].strip()
+
+            token = data.get("token", [""])[0].strip()
+            invitation = validate_invitation(token)
+
+            if not invitation:
+                self.send_response(302)
+                self.send_header("Location", "/onboard")
+                self.end_headers()
+                return
+
+            # Always bind username to the invitation definition
+            username = invitation.get("username", "").strip()
             password = data.get("password", [""])[0]
             confirm_password = data.get("confirm_password", [""])[0]
-            git_name = data.get("git_name", [""])[0].strip()
-            git_email = data.get("git_email", [""])[0].strip()
+            git_name = data.get("git_name", [invitation.get("git_name", "")])[0].strip()
+            git_email = data.get("git_email", [invitation.get("git_email", "")])[0].strip()
             github_token = data.get("github_token", [""])[0].strip()
+
             def fail(msg):
                 self.send_response(302)
-                self.send_header("Location", f"/onboard?error={urllib.parse.quote(msg)}")
+                self.send_header("Location", f"/onboard?token={urllib.parse.quote(token)}&error={urllib.parse.quote(msg)}")
                 self.end_headers()
 
             if not USERNAME_RE.match(username):
-                fail("Usuario invalido (3-32 caracteres, letras/numeros/./-/_).")
+                fail("Usuario inválido en la invitación.")
                 return
             if password != confirm_password:
                 fail("Las contraseñas no coinciden.")
@@ -377,18 +459,22 @@ class AuthHandler(http.server.BaseHTTPRequestHandler):
 
             users = load_users()
             if username in users:
-                fail(f"El usuario '{username}' ya existe. Usa /login.")
+                # If already exists, user must log in
+                fail(f"El usuario '{username}' ya está activo. Usa /login.")
                 return
 
             ok, stdout, stderr = provision_user(username, password, git_name, git_email, github_token)
             if not ok:
                 print("ONBOARD ERROR:", stderr)
-                fail("No se pudo crear el workspace. Contacta al administrador.")
+                fail("No se pudo aprovisionar el workspace. Contacta al administrador.")
                 return
 
-            token = make_token(username)
+            # Mark token consumed
+            consume_invitation(token)
+
+            session_token = make_token(username)
             self.send_response(302)
-            self.send_header("Set-Cookie", f"opencode_session={token}; Path=/; Max-Age=2592000; HttpOnly; SameSite=Lax; Secure")
+            self.send_header("Set-Cookie", f"opencode_session={session_token}; Path=/; Max-Age=2592000; HttpOnly; SameSite=Lax; Secure")
             self.send_header("Location", "/")
             self.end_headers()
             return
