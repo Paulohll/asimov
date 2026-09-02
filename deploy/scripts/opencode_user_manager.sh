@@ -194,6 +194,13 @@ PYEOF
 
   if [ "${READY}" = "true" ]; then
     echo "Contenedor listo tras ${WAITED}s."
+    # Configurar Git global dentro del contenedor para clonación transparente de apps/*
+    docker exec "opencode-${USERNAME}" git config --global user.name "${GIT_NAME}" 2>/dev/null || true
+    docker exec "opencode-${USERNAME}" git config --global user.email "${GIT_EMAIL}" 2>/dev/null || true
+    docker exec "opencode-${USERNAME}" git config --global push.autoSetupRemote true 2>/dev/null || true
+    if [ -n "${GITHUB_TOKEN}" ]; then
+      docker exec "opencode-${USERNAME}" git config --global url."https://${GITHUB_TOKEN}@github.com/".insteadOf "https://github.com/" 2>/dev/null || true
+    fi
   else
     echo "ADVERTENCIA: el contenedor no respondio tras ${MAX_WAIT}s, puede tardar un poco mas en arrancar." >&2
   fi
