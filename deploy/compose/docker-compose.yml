@@ -1,10 +1,48 @@
+# Per-user OpenCode containers behind the nginx + auth_server.py gateway.
+#
+# nginx (deploy/nginx/code.euroaffiliati.com.conf) validates the session
+# cookie via auth_server.py (:4005) and proxies to 127.0.0.1:<port> for the
+# authenticated user. None of these services should ever bind 0.0.0.0 —
+# they must only be reachable through the authenticated nginx path.
+#
+# To add a user: run scripts/opencode_user_manager.sh, which appends a new
+# service block here (copy the x-opencode-user template below) and a matching
+# entry to auth/users.json.
+
+x-opencode-user: &opencode-user
+  image: ${DOCKER_IMAGE:-europe-west1-docker.pkg.dev/affiliatteaccess/asimov/opencode}:${DOCKER_TAG:-latest}
+  restart: unless-stopped
+  working_dir: /affiliateSO
+  environment:
+    OPENCODE_DISABLE_AUTOUPDATE: "true"
+    GEMINI_API_KEY: ${GEMINI_API_KEY}
+    GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+    GOOGLE_GENERATIVE_AI_API_KEY: ${GEMINI_API_KEY}
+  command:
+    - web
+    - --hostname
+    - "0.0.0.0"
+    - --port
+    - "4000"
+    - --cors
+    - ${CORS_ORIGIN:-https://code.euroaffiliati.com}
+    - /affiliateSO
+  deploy:
+    resources:
+      limits:
+        memory: 1536M
+        cpus: "1.0"
+
 services:
+  # Legacy single-instance service, not part of the per-user auth flow.
+  # nginx never proxies to it directly; it is only reachable if something
+  # connects to 127.0.0.1:4000 on the host itself. Kept bound to loopback
+  # so it cannot be reached from outside even if a firewall rule is left
+  # open. Consider removing entirely once confirmed unused.
   opencode:
-    image: ${DOCKER_IMAGE:-opencode-custom}:${DOCKER_TAG:-latest}
-    restart: always
-    working_dir: /affiliateSO
+    <<: *opencode-user
     ports:
-      - "0.0.0.0:4000:4000"
+      - "127.0.0.1:4000:4000"
     environment:
       OPENCODE_SERVER_PASSWORD: ${OPENCODE_SERVER_PASSWORD}
       OPENCODE_SERVER_USERNAME: ${OPENCODE_SERVER_USERNAME:-opencode}
@@ -16,110 +54,36 @@ services:
       - workspace:/affiliateSO
       - opencode_data:/root/.local/share/opencode
       - opencode_config:/root/.config/opencode
-    command:
-      - web
-      - --hostname
-      - "0.0.0.0"
-      - --port
-      - "4000"
-      - --cors
-      - ${CORS_ORIGIN:-*}
-      - /affiliateSO
 
   opencode-paulo.horna:
-    image: ${DOCKER_IMAGE:-opencode-custom}:${DOCKER_TAG:-latest}
+    <<: *opencode-user
     container_name: opencode-paulo.horna
-    restart: unless-stopped
-    working_dir: /affiliateSO
     ports:
       - "127.0.0.1:4001:4000"
-    environment:
-      OPENCODE_DISABLE_AUTOUPDATE: "true"
-      GEMINI_API_KEY: ${GEMINI_API_KEY}
-      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
-      GOOGLE_GENERATIVE_AI_API_KEY: ${GEMINI_API_KEY}
     volumes:
       - /opt/asimov/workspaces/paulo.horna/affiliateSO:/affiliateSO
       - opencode_config_paulo_horna:/root/.config/opencode
       - opencode_data_paulo_horna:/root/.local/share/opencode
-    command:
-      - web
-      - --hostname
-      - "0.0.0.0"
-      - --port
-      - "4000"
-      - --cors
-      - "https://code.euroaffiliati.com"
-      - /affiliateSO
-    deploy:
-      resources:
-        limits:
-          memory: 1536M
-          cpus: "1.0"
-
 
   opencode-user2:
-    image: ${DOCKER_IMAGE:-opencode-custom}:${DOCKER_TAG:-latest}
+    <<: *opencode-user
     container_name: opencode-user2
-    restart: unless-stopped
-    working_dir: /affiliateSO
     ports:
       - "127.0.0.1:4002:4000"
-    environment:
-      OPENCODE_DISABLE_AUTOUPDATE: "true"
-      GEMINI_API_KEY: ${GEMINI_API_KEY}
-      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
-      GOOGLE_GENERATIVE_AI_API_KEY: ${GEMINI_API_KEY}
     volumes:
       - /opt/asimov/workspaces/user2/affiliateSO:/affiliateSO
       - opencode_config_user2:/root/.config/opencode
       - opencode_data_user2:/root/.local/share/opencode
-    command:
-      - web
-      - --hostname
-      - "0.0.0.0"
-      - --port
-      - "4000"
-      - --cors
-      - "https://code.euroaffiliati.com"
-      - /affiliateSO
-    deploy:
-      resources:
-        limits:
-          memory: 1536M
-          cpus: "1.0"
-
 
   opencode-user3:
-    image: ${DOCKER_IMAGE:-opencode-custom}:${DOCKER_TAG:-latest}
+    <<: *opencode-user
     container_name: opencode-user3
-    restart: unless-stopped
-    working_dir: /affiliateSO
     ports:
       - "127.0.0.1:4003:4000"
-    environment:
-      OPENCODE_DISABLE_AUTOUPDATE: "true"
-      GEMINI_API_KEY: ${GEMINI_API_KEY}
-      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
-      GOOGLE_GENERATIVE_AI_API_KEY: ${GEMINI_API_KEY}
     volumes:
       - /opt/asimov/workspaces/user3/affiliateSO:/affiliateSO
       - opencode_config_user3:/root/.config/opencode
       - opencode_data_user3:/root/.local/share/opencode
-    command:
-      - web
-      - --hostname
-      - "0.0.0.0"
-      - --port
-      - "4000"
-      - --cors
-      - "https://code.euroaffiliati.com"
-      - /affiliateSO
-    deploy:
-      resources:
-        limits:
-          memory: 1536M
-          cpus: "1.0"
 
 volumes:
   workspace:

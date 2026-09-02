@@ -5,9 +5,9 @@
 #   ./build-docker.sh [registry/image:tag]
 #
 # Examples:
-#   ./build-docker.sh                                   # local image: opencode-custom:latest
-#   ./build-docker.sh gcr.io/my-project/opencode:1.0.0  # push to GCR
-#   ./build-docker.sh docker.io/myuser/opencode:latest   # push to Docker Hub
+#   ./build-docker.sh                                                              # push to the default asimov Artifact Registry, tag "latest"
+#   ./build-docker.sh europe-west1-docker.pkg.dev/affiliatteaccess/asimov/opencode:1.0.0  # push a specific tag
+#   ./build-docker.sh docker.io/myuser/opencode:latest                             # push to a different registry
 #
 # Prerequisites:
 #   - bun installed locally
@@ -15,7 +15,8 @@
 
 set -euo pipefail
 
-IMAGE="${1:-opencode-custom:latest}"
+DEFAULT_IMAGE="europe-west1-docker.pkg.dev/affiliatteaccess/asimov/opencode:latest"
+IMAGE="${1:-$DEFAULT_IMAGE}"
 PUSH="${2:-}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OPENCODE_DIR="$SCRIPT_DIR/packages/opencode"
@@ -29,11 +30,11 @@ if [ ! -d "node_modules" ]; then
   bun install
 fi
 
-# Build the binary for linux/amd64 (musl, for Alpine)
+# Build the binary for linux/amd64 (glibc, for the debian-slim base image)
 # --single builds only the current platform target to speed things up
 bun run script/build.ts --single
 
-echo "==> Binary built at dist/opencode-linux-x64-baseline-musl/bin/opencode"
+echo "==> Binary built at dist/opencode-linux-x64/bin/opencode"
 
 echo "==> Building Docker image: $IMAGE"
 cd "$SCRIPT_DIR"
@@ -53,6 +54,6 @@ fi
 echo ""
 echo "Done! Image: $IMAGE"
 echo ""
-echo "To deploy on your GCP VM:"
-echo "  1. Copy .env.example to .env and fill in your secrets"
-echo "  2. DOCKER_IMAGE=<registry/image> DOCKER_TAG=<tag> docker compose up -d"
+echo "To deploy on the GCP VM:"
+echo "  1. On the VM, copy deploy/.env.example to /opt/asimov/.env and fill in secrets"
+echo "  2. DOCKER_IMAGE=<registry/image> DOCKER_TAG=<tag> docker compose -f /opt/asimov/docker-compose.yml up -d"
