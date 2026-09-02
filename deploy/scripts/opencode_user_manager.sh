@@ -102,8 +102,10 @@ function add_user() {
     cd "${USER_DIR}"
     git config user.name "${GIT_NAME}"
     git config user.email "${GIT_EMAIL}"
+    git config push.autoSetupRemote true
     if [ -n "${GITHUB_TOKEN}" ]; then
       git remote set-url origin "https://${GITHUB_TOKEN}@${GITHUB_REPO_URL}"
+      git branch --set-upstream-to="origin/workspace/${USERNAME}" "workspace/${USERNAME}" 2>/dev/null || true
     else
       git remote set-url origin "https://${GITHUB_REPO_URL}"
     fi
