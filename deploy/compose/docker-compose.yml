@@ -65,25 +65,71 @@ services:
       - opencode_config_paulo_horna:/root/.config/opencode
       - opencode_data_paulo_horna:/root/.local/share/opencode
 
-  opencode-user2:
-    <<: *opencode-user
-    container_name: opencode-user2
+
+
+
+  opencode-riccardo.salis:
+    image: ${DOCKER_IMAGE:-opencode-custom}:${DOCKER_TAG:-latest}
+    container_name: opencode-riccardo.salis
+    restart: unless-stopped
+    working_dir: /affiliateSO
     ports:
       - "127.0.0.1:4002:4000"
+    environment:
+      OPENCODE_DISABLE_AUTOUPDATE: "true"
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      GOOGLE_GENERATIVE_AI_API_KEY: ${GEMINI_API_KEY}
     volumes:
-      - /opt/asimov/workspaces/user2/affiliateSO:/affiliateSO
-      - opencode_config_user2:/root/.config/opencode
-      - opencode_data_user2:/root/.local/share/opencode
+      - /opt/asimov/workspaces/riccardo.salis/affiliateSO:/affiliateSO
+      - opencode_config_riccardo.salis:/root/.config/opencode
+      - opencode_data_riccardo.salis:/root/.local/share/opencode
+    command:
+      - web
+      - --hostname
+      - "0.0.0.0"
+      - --port
+      - "4000"
+      - --cors
+      - "https://code.euroaffiliati.com"
+      - /affiliateSO
+    deploy:
+      resources:
+        limits:
+          memory: 1536M
+          cpus: "1.0"
 
-  opencode-user3:
-    <<: *opencode-user
-    container_name: opencode-user3
+
+  opencode-fran.digrande:
+    image: ${DOCKER_IMAGE:-opencode-custom}:${DOCKER_TAG:-latest}
+    container_name: opencode-fran.digrande
+    restart: unless-stopped
+    working_dir: /affiliateSO
     ports:
       - "127.0.0.1:4003:4000"
+    environment:
+      OPENCODE_DISABLE_AUTOUPDATE: "true"
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      GOOGLE_GENERATIVE_AI_API_KEY: ${GEMINI_API_KEY}
     volumes:
-      - /opt/asimov/workspaces/user3/affiliateSO:/affiliateSO
-      - opencode_config_user3:/root/.config/opencode
-      - opencode_data_user3:/root/.local/share/opencode
+      - /opt/asimov/workspaces/fran.digrande/affiliateSO:/affiliateSO
+      - opencode_config_fran.digrande:/root/.config/opencode
+      - opencode_data_fran.digrande:/root/.local/share/opencode
+    command:
+      - web
+      - --hostname
+      - "0.0.0.0"
+      - --port
+      - "4000"
+      - --cors
+      - "https://code.euroaffiliati.com"
+      - /affiliateSO
+    deploy:
+      resources:
+        limits:
+          memory: 1536M
+          cpus: "1.0"
 
 volumes:
   workspace:
@@ -91,7 +137,7 @@ volumes:
   opencode_config:
   opencode_config_paulo_horna:
   opencode_data_paulo_horna:
-  opencode_config_user2:
-  opencode_data_user2:
-  opencode_config_user3:
-  opencode_data_user3:
+  opencode_config_riccardo.salis:
+  opencode_data_riccardo.salis:
+  opencode_config_fran.digrande:
+  opencode_data_fran.digrande:
