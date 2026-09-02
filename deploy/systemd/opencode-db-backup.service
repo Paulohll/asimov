@@ -1,0 +1,6 @@
+[Unit]
+Description=Backup diario de SQLite de OpenCode por usuario
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /opt/asimov/scripts/backup_opencode_db.py

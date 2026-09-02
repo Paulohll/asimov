@@ -32,3 +32,8 @@ UPCOMING_CHANGELOG.md
 logs/
 *.bun-build
 tsconfig.tsbuildinfo
+
+# Deployment secrets — these live only on the host, never in git
+deploy/**/.env
+deploy/**/.session_secret
+deploy/auth/users.json
