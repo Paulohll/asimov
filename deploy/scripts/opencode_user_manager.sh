@@ -94,7 +94,7 @@ function add_user() {
   mkdir -p "${ASIMOV_DIR}/workspaces/${USERNAME}"
   if [ ! -d "${USER_DIR}/.git" ]; then
     git clone "${MASTER_REPO}" "${USER_DIR}"
-    (cd "${USER_DIR}" && git checkout -B "workspace/${USERNAME}")
+    (cd "${USER_DIR}" && git checkout main 2>/dev/null || true)
   fi
 
   echo "[2/6] Configurando identidad Git y remote..."
@@ -105,7 +105,7 @@ function add_user() {
     git config push.autoSetupRemote true
     if [ -n "${GITHUB_TOKEN}" ]; then
       git remote set-url origin "https://${GITHUB_TOKEN}@${GITHUB_REPO_URL}"
-      git branch --set-upstream-to="origin/workspace/${USERNAME}" "workspace/${USERNAME}" 2>/dev/null || true
+      git branch --set-upstream-to="origin/main" "main" 2>/dev/null || true
     else
       git remote set-url origin "https://${GITHUB_REPO_URL}"
     fi
